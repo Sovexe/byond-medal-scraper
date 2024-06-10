@@ -8,12 +8,15 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
 - Handles date formats: today, yesterday, and specific dates
 - Saves data in JSON format
 - Supports concurrent scraping for faster execution
+- Includes a progress bar to show scraping progress
+- Adds a delay between batches to be considerate to the web server
 
 ## Requirements
 
 - Python 3.x
 - `requests` library
 - `beautifulsoup4` library
+- `tqdm` library
 
 ## Installation
 
@@ -45,6 +48,13 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
 
     ```bash
     pip install -r requirements.txt
+    ```
+
+    Ensure your `requirements.txt` contains the following:
+    ```
+    requests
+    beautifulsoup4
+    tqdm
     ```
 
 ## Usage
