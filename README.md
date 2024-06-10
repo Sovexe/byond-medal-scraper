@@ -10,6 +10,7 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
 - Supports concurrent scraping for faster execution
 - Includes a progress bar to show scraping progress
 - Adds a delay between batches to be considerate to the web server
+- Can resume scraping from where it left off if interrupted
 
 ## Requirements
 
@@ -68,13 +69,21 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
     user3
     ```
 
-2. Run the script:
+2. Set the desired mode and parameters at the top of the script:
+    - `DELAY`: Delay between each batch in seconds.
+    - `MAX_WORKERS`: Maximum number of concurrent workers.
+    - `ERROR_DELAY`: Delay between retries after a network failure.
+    - `RETRIES`: Max retries per user.
+    - `OUTPUT_FILE`: Output file name.
+    - `APPEND_MODE`: Boolean to either append with checks (True) or start fresh (False).
+
+3. Run the script:
 
     ```bash
     python scrape_medals_batch.py
     ```
 
-3. The script will create a `all_users_medals.json` file containing the scraped data. Errors will be logged in `error_log.txt`.
+4. The script will create a `all_users_medals.json` file containing the scraped data. Errors will be logged in `error_log.txt`.
 
 ## Example Output
 

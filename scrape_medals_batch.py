@@ -15,6 +15,10 @@ MAX_WORKERS = 10
 ERROR_DELAY = 3
 # Max retries per user
 RETRIES = 3
+# Output file name
+OUTPUT_FILE = 'all_users_medals.json'
+# Append mode: True to append with checks, False to start fresh. Allows resuming of script if only executed partway.
+APPEND_MODE = False
 
 def scrape_medals(user, retries=RETRIES):
     url = f"https://www.byond.com/members/{user}?tab=medals&all=1"
@@ -63,32 +67,47 @@ def parse_date(date_str):
         return date_str
 
 def save_to_json(data, filename):
-    if data:
-        if not os.path.isfile(filename):
-            with open(filename, 'w') as f:
-                json.dump(data, f, indent=4)
-        else:  # Append to existing file
-            with open(filename, 'r') as f:
-                existing_data = json.load(f)
-            existing_data.update(data)
-            with open(filename, 'w') as f:
-                json.dump(existing_data, f, indent=4)
+    if os.path.isfile(filename):
+        with open(filename, 'r') as f:
+            existing_data = json.load(f)
+        existing_data.update(data)
+        with open(filename, 'w') as f:
+            json.dump(existing_data, f, indent=4)
+    else:
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
 
 def log_error(user, error):
     with open('error_log.txt', 'a') as f:
         f.write(f"Error for {user}: {error}\n")
+
+def load_existing_data(filename):
+    if os.path.isfile(filename):
+        with open(filename, 'r') as f:
+            return json.load(f)
+    return {}
 
 def main():
     start_time = time.time()
     
     with open('usernames.txt', 'r') as f:
         usernames = [line.strip() for line in f]
+
+    if not APPEND_MODE:
+        if os.path.isfile(OUTPUT_FILE):
+            os.remove(OUTPUT_FILE)
+        processed_users = set()
+        usernames_to_process = usernames
+    else:
+        existing_data = load_existing_data(OUTPUT_FILE)
+        processed_users = set(existing_data.keys())
+        usernames_to_process = [user for user in usernames if user not in processed_users]
     
     all_medals = {}
     
     # Process users in batches
-    for i in tqdm(range(0, len(usernames), MAX_WORKERS), desc="Processing batches"):
-        batch = usernames[i:i + MAX_WORKERS]
+    for i in tqdm(range(0, len(usernames_to_process), MAX_WORKERS), desc="Processing batches"):
+        batch = usernames_to_process[i:i + MAX_WORKERS]
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {executor.submit(scrape_medals, user): user for user in batch}
             
@@ -98,14 +117,12 @@ def main():
                     result = future.result()
                     if result:
                         all_medals.update(result)
+                        save_to_json(result, OUTPUT_FILE)
                 except Exception as e:
                     log_error(user, str(e))
         
         # Delay after processing each batch
         time.sleep(DELAY)
-    
-    if all_medals:
-        save_to_json(all_medals, 'all_users_medals.json')
     
     elapsed_time = time.time() - start_time
     print(f"Script completed in {elapsed_time:.2f} seconds")
