@@ -6,6 +6,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from tqdm import tqdm
+import re
 
 # Constants
 ## Delay between each batch in seconds
@@ -43,6 +44,7 @@ def scrape_medals(user, retries=RETRIES):
                         for medal_td in table_row.find_all('td', style='vertical-align:top;text-align:center;'):
                             name = medal_td.find('span', class_='medal_name').text.strip()
                             date_str = medal_td.find('p', class_='smaller').text.replace('Earned ', '').strip()
+                            date_str = re.sub(r'\s+', ' ', date_str)  # Remove multiple spaces
                             date = parse_date(date_str)
                             medals.append({'Name': name, 'Date': date})
                         table_row = table_row.find_next_sibling('tr')
@@ -58,6 +60,10 @@ def scrape_medals(user, retries=RETRIES):
                 return {}
 
 def parse_date(date_str):
+    # Clean non-breaking spaces and HTML entities
+    date_str = date_str.replace('\u00a0', ' ')
+    date_str = re.sub(r'\s+', ' ', date_str).strip()
+    
     try:
         if date_str.startswith("at"):
             date_obj = datetime.strptime(date_str, "at %I:%M %p").replace(
@@ -72,13 +78,30 @@ def parse_date(date_str):
                 month=(datetime.now() - timedelta(days=1)).month,
                 day=(datetime.now() - timedelta(days=1)).day
             )
-        else:
+        elif re.match(r"^on \w+day, \d+:\d+ [ap]m$", date_str):
+            # Handle 'on <day of the week>, <time>'
+            parts = date_str.split(', ')
+            day_of_week = parts[0].split(' ')[1]
+            time_str = parts[1]
+            now = datetime.now()
+            date_obj = datetime.strptime(time_str, "%I:%M %p").replace(
+                year=now.year,
+                month=now.month,
+                day=now.day
+            )
+            # Adjust the day to match the correct day of the week
+            while date_obj.strftime('%A') != day_of_week:
+                date_obj -= timedelta(days=1)
+        elif date_str.startswith("on"):
             try:
                 date_obj = datetime.strptime(date_str, "on %b %d %Y, %I:%M %p")
             except ValueError:
                 date_obj = datetime.strptime(date_str, "on %b %d, %I:%M %p").replace(year=datetime.now().year)
+        else:
+            date_obj = datetime.strptime(date_str, "on %b %d %Y, %I:%M %p")
         return date_obj.isoformat()
     except ValueError:
+        log_error('Unknown', f"Failed to parse date string: {date_str}")
         return date_str
 
 def save_batch_to_json(batch_data, filename):
