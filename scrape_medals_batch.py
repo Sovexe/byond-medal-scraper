@@ -7,17 +7,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from tqdm import tqdm
 
-# Delay between each batch in seconds
+# Constants
+## Delay between each batch in seconds
 DELAY = 1
-# Maximum number of concurrent workers
+## Maximum number of concurrent workers
 MAX_WORKERS = 10
-# Delay between retries after a network failure
+## Delay between retries after a network failure
 ERROR_DELAY = 3
-# Max retries per user
+## Max retries per user
 RETRIES = 3
-# Output file name
+## Output file name
 OUTPUT_FILE = 'all_users_medals.json'
-# Append mode: True to append with checks, False to start fresh. Allows resuming of script if only executed partway.
+## Input file name
+INPUT_FILE = 'usernames.txt'
+## Section title to search for
+SECTION_TITLE = 'Space Station 13 Medals'
+## Append mode: True to append with checks, False to start fresh. Allows resuming of script if only executed partway.
 APPEND_MODE = False
 
 def scrape_medals(user, retries=RETRIES):
@@ -29,12 +34,22 @@ def scrape_medals(user, retries=RETRIES):
             soup = BeautifulSoup(response.content, 'html.parser')
             
             medals = []
-            for medal in soup.find_all('td', style='vertical-align:top;text-align:center;'):
-                name = medal.find('span', class_='medal_name').text.strip()
-                date_str = medal.find('p', class_='smaller').text.replace('Earned ', '').strip()
-                date = parse_date(date_str)
-                medals.append({'Name': name, 'Date': date})
-            
+            section_found = False
+            for section in soup.find_all('p', class_='title use_header'):
+                if SECTION_TITLE in section.text:
+                    section_found = True
+                    table_row = section.find_next('tr')
+                    while table_row:
+                        for medal_td in table_row.find_all('td', style='vertical-align:top;text-align:center;'):
+                            name = medal_td.find('span', class_='medal_name').text.strip()
+                            date_str = medal_td.find('p', class_='smaller').text.replace('Earned ', '').strip()
+                            date = parse_date(date_str)
+                            medals.append({'Name': name, 'Date': date})
+                        table_row = table_row.find_next_sibling('tr')
+                    break
+            if not section_found:
+                log_error(user, f"Section '{SECTION_TITLE}' not found")
+                
             return {user: medals}
         except (requests.exceptions.RequestException, AttributeError) as e:
             time.sleep(ERROR_DELAY)
@@ -66,16 +81,16 @@ def parse_date(date_str):
     except ValueError:
         return date_str
 
-def save_to_json(data, filename):
+def save_batch_to_json(batch_data, filename):
     if os.path.isfile(filename):
         with open(filename, 'r') as f:
             existing_data = json.load(f)
-        existing_data.update(data)
+        existing_data.update(batch_data)
         with open(filename, 'w') as f:
             json.dump(existing_data, f, indent=4)
     else:
         with open(filename, 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(batch_data, f, indent=4)
 
 def log_error(user, error):
     with open('error_log.txt', 'a') as f:
@@ -90,7 +105,7 @@ def load_existing_data(filename):
 def main():
     start_time = time.time()
     
-    with open('usernames.txt', 'r') as f:
+    with open(INPUT_FILE, 'r') as f:
         usernames = [line.strip() for line in f]
 
     if not APPEND_MODE:
@@ -103,11 +118,10 @@ def main():
         processed_users = set(existing_data.keys())
         usernames_to_process = [user for user in usernames if user not in processed_users]
     
-    all_medals = {}
-    
     # Process users in batches
     for i in tqdm(range(0, len(usernames_to_process), MAX_WORKERS), desc="Processing batches"):
         batch = usernames_to_process[i:i + MAX_WORKERS]
+        batch_results = {}
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = {executor.submit(scrape_medals, user): user for user in batch}
             
@@ -116,10 +130,12 @@ def main():
                 try:
                     result = future.result()
                     if result:
-                        all_medals.update(result)
-                        save_to_json(result, OUTPUT_FILE)
+                        batch_results.update(result)
                 except Exception as e:
                     log_error(user, str(e))
+        
+        # Save the batch to disk
+        save_batch_to_json(batch_results, OUTPUT_FILE)
         
         # Delay after processing each batch
         time.sleep(DELAY)
