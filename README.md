@@ -5,7 +5,7 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
 ## Features
 
 - Scrapes medals for a list of BYOND usernames
-- Handles date formats: today, yesterday, and specific dates
+- Handles date formats: today, yesterday, on , and specific dates
 - Saves data in JSON format
 - Supports concurrent scraping for faster execution
 - Includes a progress bar to show scraping progress
@@ -70,12 +70,14 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
     ```
 
 2. Set the desired mode and parameters at the top of the script:
-    - `DELAY`: Delay between each batch in seconds.
-    - `MAX_WORKERS`: Maximum number of concurrent workers.
-    - `ERROR_DELAY`: Delay between retries after a network failure.
-    - `RETRIES`: Max retries per user.
-    - `OUTPUT_FILE`: Output file name.
-    - `APPEND_MODE`: Boolean to either append with checks (True) or start fresh (False).
+    - `DELAY`: Delay between each batch in seconds. Default is `1`.
+    - `MAX_WORKERS`: Maximum number of concurrent workers. Default is `10`.
+    - `ERROR_DELAY`: Delay between retries after a network failure. Default is `3`.
+    - `RETRIES`: Max retries per user. Default is `3`.
+    - `OUTPUT_FILE`: Output file name. Default is `'all_users_medals.json'`.
+    - `INPUT_FILE`: Input file name. Default is `'usernames.txt'`.
+    - `SECTION_TITLE`: Section title to search for. Default is `'Space Station 13 Medals'`.
+    - `APPEND_MODE`: Boolean to either append with checks (`True`) or start fresh (`False`). Default is `False`.
 
 3. Run the script:
 
