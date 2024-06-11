@@ -5,7 +5,7 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
 ## Features
 
 - Scrapes medals for a list of BYOND usernames
-- Handles date formats: today, yesterday, on , and specific dates
+- Handles date formats: today, yesterday, on DAY, and specific dates
 - Saves data in JSON format
 - Supports concurrent scraping for faster execution
 - Includes a progress bar to show scraping progress
