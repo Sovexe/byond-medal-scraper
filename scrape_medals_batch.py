@@ -37,10 +37,10 @@ def scrape_medals(user, retries=RETRIES):
             medals = []
             section_found = False
             for section in soup.find_all('p', class_='title use_header'):
-                if SECTION_TITLE in section.text:
+                if SECTION_TITLE.lower() in section.text.lower():
                     section_found = True
                     table_row = section.find_next('tr')
-                    while table_row:
+                    while table_row and not table_row.find('p', class_='title use_header'):
                         for medal_td in table_row.find_all('td', style='vertical-align:top;text-align:center;'):
                             name = medal_td.find('span', class_='medal_name').text.strip()
                             date_str = medal_td.find('p', class_='smaller').text.replace('Earned ', '').strip()
@@ -50,13 +50,13 @@ def scrape_medals(user, retries=RETRIES):
                         table_row = table_row.find_next_sibling('tr')
                     break
             if not section_found:
-                log_error(user, f"Section '{SECTION_TITLE}' not found")
+                log_error(user, f"Section '{SECTION_TITLE}' not found in {url}")
                 
             return {user: medals}
         except (requests.exceptions.RequestException, AttributeError) as e:
             time.sleep(ERROR_DELAY)
             if attempt == retries - 1:
-                log_error(user, str(e))
+                log_error(user, f"Attempt {attempt+1} failed for {user}: {e}\nResponse: {response.content[:500]}")
                 return {}
 
 def parse_date(date_str):
