@@ -85,7 +85,13 @@ This script scrapes medals earned by BYOND users and saves the data in JSON form
     python scrape_medals_batch.py
     ```
 
-4. The script will create a `all_users_medals.json` file containing the scraped data. Errors will be logged in `error_log.txt`.
+4. The script will create an `all_users_medals.json` file containing the scraped data. Errors will be logged in `error_log.txt`.
+
+5. Deactivate the virtual environment when you are finished working with the script to restore your shell to the state it was in before you activated the virtual environment:
+
+    ```bash
+    deactivate
+    ```
 
 ## Example Output
 
